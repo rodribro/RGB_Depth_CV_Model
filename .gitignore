@@ -1,0 +1,28 @@
+#Image folders
+DepthImages/
+RGBImages/
+readme_images/
+
+# Virtual environments
+venv/
+.venv/
+.env/
+venv*/
+env*/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+
