@@ -5,7 +5,7 @@ This repository provides a comprehensive end-to-end pipeline for automated lettu
 
 
 ### <b> Model Architecture: </b>
-<img src="readme_images/model_arch.png" alt="Architecture Diagram" width="30%">
+<img src="notebook_test/images/model_arch.png" alt="Architecture Diagram" width="30%">
 
 This implementation is based on the methodology described in this [paper](https://www.mdpi.com/1424-8220/22/15/5499).
 
