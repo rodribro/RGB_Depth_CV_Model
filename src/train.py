@@ -14,6 +14,7 @@ from model import *
 from utils import calculate_metrics
 import os
 import time
+from preprocess import PlantDataset, Preprocessing  
 
 def train_rgb_branch(rgb_branch, num_epochs=10, batch_size=32, lr=0.001, device='cpu', seed=30, augment_multiplier=4):
     # Set random seeds for reproducibility
@@ -116,7 +117,7 @@ def train_rgb_branch(rgb_branch, num_epochs=10, batch_size=32, lr=0.001, device=
             rgb_images = batch['rgb'].to(device)
             biometrics = torch.stack([
                 batch['biometrics'][param] for param in 
-                ['Diameter', 'Height']
+                ['FreshWeightShoot', 'DryWeightShoot', 'Diameter', 'Height'] 
             ], dim=1).float().to(device)
             
             optimizer.zero_grad()
@@ -146,7 +147,7 @@ def train_rgb_branch(rgb_branch, num_epochs=10, batch_size=32, lr=0.001, device=
                 rgb_images = batch['rgb'].to(device)
                 biometrics = torch.stack([
                     batch['biometrics'][param] for param in 
-                    ['Diameter','Height']
+                    ['FreshWeightShoot', 'DryWeightShoot', 'Diameter', 'Height'] 
                 ], dim=1).float().to(device)
                 
                 outputs = rgb_branch(rgb_images)
@@ -458,8 +459,9 @@ def train_joint_regressor(joint_model, num_epochs=10, batch_size=16, lr=0.0001, 
             
             # Prepare targets for joint outputs
             target1 = torch.stack([
-                batch['biometrics']['Diameter'],  
-                batch['biometrics']['Height']    
+                batch['biometrics']['FreshWeightShoot'],
+                batch['biometrics']['DryWeightShoot'],
+                batch['biometrics']['Diameter']
             ], dim=1).float().to(device)
             
             target2 = batch['biometrics']['Height'].unsqueeze(1).float().to(device)
@@ -493,8 +495,9 @@ def train_joint_regressor(joint_model, num_epochs=10, batch_size=16, lr=0.0001, 
                 depth_images = batch['depth'].to(device)
                 
                 target1 = torch.stack([
-                    batch['biometrics']['Diameter'],
-                    batch['biometrics']['Height']
+                    batch['biometrics']['FreshWeightShoot'],
+                    batch['biometrics']['DryWeightShoot'],
+                    batch['biometrics']['Diameter']
                 ], dim=1).float().to(device)
                 
                 target2 = batch['biometrics']['Height'].unsqueeze(1).float().to(device)
