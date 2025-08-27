@@ -43,7 +43,7 @@ class RGBBranch(nn.Module):
         self.dropout1 = nn.Dropout(0.5)
         self.fc1 = nn.Linear(2048, 256)
         self.dropout2 = nn.Dropout(0.5) 
-        self.fc2 = nn.Linear(256, 2)  # Your 2 outputs
+        self.fc2 = nn.Linear(256, 4)  # Outputs: FreshWeight, DryWeight, Diameter, Height
         
     def forward(self, x):
         # Process RGB image
@@ -129,23 +129,23 @@ class JointRegressor(nn.Module):
 
         # Joint regressor (takes concatenated outputs)
         self.dropout1 = nn.Dropout(0.5)
-        self.fc1 = nn.Linear(3, 2048)      # RGB(2) + Depth(1) = 3 inputs
+        self.fc1 = nn.Linear(5, 2048)      # Inputs: RGB(4) + Depth(1) = 5 inputs
         self.dropout2 = nn.Dropout(0.5)
         self.fc2 = nn.Linear(2048, 2048)
         self.dropout3 = nn.Dropout(0.5)
         
         # Final outputs
-        self.output1 = nn.Linear(2048, 2)  # Diameter, Height
+        self.output1 = nn.Linear(2048, 3)  # FreshWeight, DryWeight, Diameter
         self.output2 = nn.Linear(2048, 1)  # Height only
 
 
     def forward(self, rgb, depth):
         # Get outputs from individual branches
-        rgb_output = self.rgb_branch(rgb)      # [batch, 2]
+        rgb_output = self.rgb_branch(rgb)      # [batch, 4]
         depth_output = self.depth_branch(depth) # [batch, 1]
         
         # Concatenate outputs
-        combined = torch.cat([rgb_output, depth_output], dim=1)  # [batch, 3]
+        combined = torch.cat([rgb_output, depth_output], dim=1)  # [batch, 5]
         
         # Process through joint regressor
         x = self.dropout1(combined)
@@ -159,7 +159,7 @@ class JointRegressor(nn.Module):
         output2 = self.output2(x)          # [batch, 1]
         
         return {
-            'output1': output1,  # Diameter, height
+            'output1': output1,  # FreshWeight, DryWeight, Diameter, Height
             'output2': output2,  # Height
             'rgb_output': rgb_output,    # Individual RGB predictions
             'depth_output': depth_output  # Individual depth predictions
