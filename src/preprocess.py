@@ -410,7 +410,7 @@ class PlantDataset(Dataset):
             "DryWeightShoot": convert_value(measurement_data.get("DryWeightShoot", 0.0)),
             "Height": convert_value(measurement_data.get("Height", 0.0)),
             "Diameter": convert_value(measurement_data.get("Diameter", 0.0)),
-            "LeafArea": convert_value(measurement_data.get("LeafArea", 0.0))
+            #"LeafArea": convert_value(measurement_data.get("LeafArea", 0.0))
         }
         normalized_biometrics = self.normalize_biometrics(biometrics)
         
