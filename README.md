@@ -1,4 +1,4 @@
-## <b> Lettuce Biomass Estimation – RGB & Depth Image </b>
+## <b> Lettuce Biomass Estimation – RGB & Depth Image (work in progress)</b>
 
 ### <b> Overview:</b>
 This repository provides a comprehensive end-to-end pipeline for automated lettuce biomass estimation using computer vision and deep learning techniques. The system leverages both RGB and depth image modalities to achieve accurate plant biometry measurements through a two-stage (CNN-based) architecture.
@@ -47,3 +47,20 @@ metrics/ # Automatically created metrics and model checkpoints folder for each t
 
 ```
 Note: The RGB and depth images are not included in this repository due to size constraints. However, the complete dataset used for training and validation is publicly available here: [dataset](link)
+
+### How to install:
+
+1) Create a python virtual environment, preferably python 3.12. Run on the root directory of the project:
+```bash
+python3.12 -m venv venv
+```
+
+2) Activate the environment:
+```bash
+source venv/bin/activate
+```
+
+3) Install requirements:
+```bash
+pip install -r requirements.txt
+```
