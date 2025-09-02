@@ -14,8 +14,11 @@ This implementation is based on the methodology described in this [paper](https:
 src/
 ├── coord_script.py         # CV2 based script to manually pinpoint the center of the RGB and Depth images for data processing purposes (coordinates are saved to a JSON file)
 ├── model.py                # 2 stage CNN base model architecture
+├── dataset.py              # Uses PyTorch's Dataset class to generate specific PlantDataset class for this use case
 ├── train.py                # Model training loop (Metrics and logs are automatically stored in a designated folder that is created upon initiating the training session)
+├── preprocess.py           # Preprocessing pipeline for RGB and Depth images. Formats images accordingly for model usage
 └── utils.py                # Some visualization, preprocessing and metric extraction functions (will move these function to other files)
+
 
 
 Coordinates/
