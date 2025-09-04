@@ -1,17 +1,8 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import matplotlib.pyplot as plt
 import torchvision.models as models
-import torch.optim as optim
-import numpy as np
-from tqdm import tqdm
-from torch.utils.data import Subset
-from torch.utils.data import DataLoader
-import json
-from matplotlib.backends.backend_pdf import PdfPages
-from preprocess import PlantDataset, Preprocessing
-#from src.notebooks_tests.arch_tests import *
+
 
 class RGBProcessingBlock(nn.Module):
     def __init__(self):
@@ -119,10 +110,10 @@ class DepthBranch(nn.Module):
         x = self.fc2(x)
         return x
     
-
-class JointRegressor(nn.Module):
+class FirstStage(nn.Module):
+    """Joint Regressor that generates input map for the SecondStage of the model architecture"""
     def __init__(self):
-        super(JointRegressor, self).__init__()
+        super(FirstStage, self).__init__()
         
         self.rgb_branch = RGBBranch()
         self.depth_branch = DepthBranch()
@@ -143,8 +134,7 @@ class JointRegressor(nn.Module):
         # Get outputs from individual branches
         rgb_output = self.rgb_branch(rgb)      # [batch, 4]
         depth_output = self.depth_branch(depth) # [batch, 1]
-        
-        # Concatenate outputs
+        # Concatenate outputs (rgb and depth)
         combined = torch.cat([rgb_output, depth_output], dim=1)  # [batch, 5]
         
         # Process through joint regressor
@@ -157,13 +147,49 @@ class JointRegressor(nn.Module):
         # Generate final outputs
         output1 = self.output1(x)          # [batch, 3]
         output2 = self.output2(x)          # [batch, 1]
+
+        input_map = torch.cat([output1, output2], dim=1)
         
         return {
-            'output1': output1,  # FreshWeight, DryWeight, Diameter, Height
+            'input_map': input_map, # Output1 + Output2 (FreshWeight, DryWeight, Diameter, Height)
+            'output1': output1,  # FreshWeight, DryWeight, Diameter
             'output2': output2,  # Height
             'rgb_output': rgb_output,    # Individual RGB predictions
             'depth_output': depth_output  # Individual depth predictions
         }
+    
+class SecondStageRegressor(nn.Module):
+    def __init__(self):
+        super(SecondStageRegressor, self).__init__()
+
+        self.fc1 = nn.Linear(4, 2048)
+        self.dropout1 = nn.Dropout(0.5)
+        self.fc2 = nn.Linear(2048,2048)
+        self.dropout2 = nn.Dropout(0.5)
+        self.fc3 = nn.Linear(2048,1)
+
+    def forward(self):
+
+        x = self.fc1(x)
+        x = self.dropout1(x)
+        x = self.fc2(x)
+        x = self.dropout2(x)
+        x = self.fc3(x)
+
+    
+class SecondStage(nn.Module):
+    def __init__(self):
+        super(SecondStage, self).__init__()
+
+        self.dry_weight_regressor = SecondStageRegressor()
+        self.leaf_area_regressor = SecondStageRegressor()
+
+    def forward(self, input_map):
+
+        refined_dry_weight = self.dry_weight_regressor(input_map)
+        leaf_area = self.leaf_area_regressor(input_map)
+
+        return {'refined_dry_weight': refined_dry_weight, 'leaf_area': leaf_area}
 
 
 
