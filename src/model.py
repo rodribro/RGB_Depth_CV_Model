@@ -186,10 +186,25 @@ class SecondStage(nn.Module):
 
     def forward(self, input_map):
 
-        refined_dry_weight = self.dry_weight_regressor(input_map)
-        leaf_area = self.leaf_area_regressor(input_map)
+        refined_dry_weight = self.dry_weight_regressor(input_map) # output 3
+        leaf_area = self.leaf_area_regressor(input_map) # output 4
 
         return {'refined_dry_weight': refined_dry_weight, 'leaf_area': leaf_area}
+    
+
+
+class TwoStageModel(nn.Model):
+    def __init__(self):
+        super(TwoStageModel).__init__()
+        self.first_stage = FirstStage()
+        self.second_stage = SecondStage()
+
+    def forward(self, rgb, depth):
+        stage1_outputs = self.first_stage(rgb,depth)
+        stage2_outputs = self.second_stage(stage1_outputs['input_map'])
+
+        return {**stage1_outputs, **stage2_outputs}
+
 
 
 
