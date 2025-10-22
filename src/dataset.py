@@ -2,9 +2,7 @@ import json
 import cv2
 import os
 import torch
-import torch.nn.functional as F
 import matplotlib.pyplot as plt
-# import torchvision.transforms as transforms
 from torch.utils.data import Dataset
 
 from preprocess import Preprocessing
@@ -181,7 +179,7 @@ class PlantDataset(Dataset):
             "DryWeightShoot": convert_value(measurement_data.get("DryWeightShoot", 0.0)),
             "Height": convert_value(measurement_data.get("Height", 0.0)),
             "Diameter": convert_value(measurement_data.get("Diameter", 0.0)),
-            #"LeafArea": convert_value(measurement_data.get("LeafArea", 0.0))
+            "LeafArea": convert_value(measurement_data.get("LeafArea", 0.0))
         }
         normalized_biometrics = self.normalize_biometrics(biometrics)
         
@@ -203,7 +201,7 @@ class PlantDataset(Dataset):
         
         depth_center = self.coords_dict[basic_name]  # Use same basic name for depth
         
-        normalized_depth = self.preprocessor.normalize(depth_tensor, is_depth=True, fill_missing=True)
+        normalized_depth = self.preprocessor.normalize(depth_tensor, is_depth=True)
         
         if self.augment and aug_version > 0:
             cropped_depth = self.preprocessor.augment(normalized_depth, depth_center, is_depth=True)
