@@ -4,6 +4,7 @@ import torchvision.transforms as transforms
 import os
 import matplotlib.pyplot as plt
 import numpy as np
+import cv2
 
 
 
@@ -109,7 +110,7 @@ class Preprocessing:
     def augment(self, image_tensor: torch.Tensor, center: tuple,  is_depth=False) -> torch.Tensor: #image: Image.Image
         augmented = self.augmentation_transform(image_tensor)
         return self.crop(augmented, center, is_depth)
-    
+    '''
     def knn_fill_depth(self, depth_tensor: torch.Tensor, missing_val=0, max_iterations=100, stop_threshold=100):
         """
         Fill missing values in a depth tensor using iterative 3x3 mean filtering,
@@ -126,7 +127,11 @@ class Preprocessing:
         """
         filled = depth_tensor.clone()
 
-        kernel = torch.ones((1, 1, 3, 3), device=filled.device)
+        # Store original valid value range for clamping
+        original_max = filled[filled != missing_val].max() if (filled != missing_val).any() else 65535
+        original_min = filled[filled != missing_val].min() if (filled != missing_val).any() else 0
+
+        kernel = torch.ones((1, 1, 3, 3), device=filled.device) # 9x9 filter
 
         for i in range(max_iterations):
             padded = F.pad(filled, (1, 1, 1, 1), mode='replicate')
@@ -141,17 +146,79 @@ class Preprocessing:
             newly_filled = (filled == missing_val) & (count_nonzero > 0)
             filled[newly_filled] = avg[newly_filled]
 
+            filled = torch.clamp(filled, min=original_min, max=original_max)
+
             remaining_zeros = torch.sum(filled == missing_val).item()
-            print(f"Pass {i+1}: Remaining zeros: {remaining_zeros}")
+            #print(f"Pass {i+1}: Remaining zeros: {remaining_zeros}")
 
             if remaining_zeros <= stop_threshold:
                 print("Stopping early due to low remaining zeros.")
                 break
 
         return filled
+    '''
+    '''
+    def remove_noise_depth(self, original_dir, no_noise_dir):
+        #Removes noise (0 valued pixels) from Depth images
 
+        if not os.path.exists(no_noise_dir):
+            os.makedirs(no_noise_dir)
+            depth_images = os.listdir(original_dir)
 
-    def normalize(self, image_tensor:torch.Tensor, is_depth=False, fill_missing=False):
+            for img in depth_images:
+                print(img)
+                depth_img = os.path.join(original_dir, img)
+                depth = cv2.imread(depth_img, cv2.IMREAD_UNCHANGED)
+                depth_tensor = torch.from_numpy(depth).float().unsqueeze(0) # turn into tensor and add 1 channel (H,W) -> [1,H,W], as required by the knn_fill_depth method for depth tensors
+                print(f"Depth tensor shape: {depth_tensor.shape} | Type: {depth_tensor.dtype} | MIN: {np.min(depth_tensor.squeeze(0).cpu().numpy())} | MAX: {np.max(depth_tensor.squeeze(0).cpu().numpy())}")
+                filled_depth = preproc.knn_fill_depth(depth_tensor=depth_tensor)
+                print(f"Filled Depth tensor shape: {filled_depth.shape} | Type: {filled_depth.dtype} | MIN: {np.min(filled_depth.squeeze(0).cpu().numpy())} | MAX: {np.max(filled_depth.squeeze(0).cpu().numpy())}")
+
+                filled_depth = filled_depth.squeeze(0).cpu().numpy()# Remove added channel so that we can save it as depth image, cpu() not necessarily required in this case but it is a good practice
+
+               
+                # Save processed tensor as image
+                destination_path = os.path.join(no_noise_dir, img)
+                print(destination_path)
+                cv2.imwrite(destination_path, filled_depth)
+        print(f"Removed noise from depth images and saved them in {no_noise_dir}")
+    '''
+
+    def remove_noise_depth(self, original_dir, no_noise_dir):
+        '''Removes noise (0 valued pixels) from Depth images using OpenCV inpainting'''
+        
+        if not os.path.exists(no_noise_dir):
+            os.makedirs(no_noise_dir)
+        
+        depth_images = [f for f in os.listdir(original_dir) if f.endswith(('.png', '.jpg', '.tiff'))]
+        
+        for img in depth_images:
+            print(f"Processing: {img}")
+            depth_img_path = os.path.join(original_dir, img)
+            depth = cv2.imread(depth_img_path, cv2.IMREAD_UNCHANGED)
+            
+            if depth is None:
+                print(f"Failed to read {img}, skipping...")
+                continue
+            
+            print(f"Original - Min: {np.min(depth)} | Max: {np.max(depth)}")
+            
+            # Create binary mask where 0 = missing pixels
+            mask = (depth == 0).astype(np.uint8)
+            
+            # Inpaint using Navier-Stokes method
+            # inpaintRadius: size of neighborhood (3-5 pixels typical for depth)
+            filled_depth = cv2.inpaint(depth, mask, inpaintRadius=3, flags=cv2.INPAINT_NS)
+            
+            print(f"dtype: {filled_depth.dtype}|Filled - Min: {np.min(filled_depth)} | Max: {np.max(filled_depth)}")
+            
+            # Save processed image
+            destination_path = os.path.join(no_noise_dir, img)
+            cv2.imwrite(destination_path, filled_depth)
+        
+        print(f"Removed noise from depth images and saved to {no_noise_dir}")
+
+    def normalize(self, image_tensor:torch.Tensor, is_depth=False): #, fill_missing=False
         """
         Normalize image tensor with optional depth filling
         
@@ -168,12 +235,6 @@ class Preprocessing:
         if is_depth:
             # Keep original tensor for later operations
             depth_tensor = image_tensor.clone()
-            
-            if fill_missing:
-                print("Zeros before fill:", torch.sum(depth_tensor == 0).item())
-                # Fill missing values - pass tensor as is
-                depth_tensor = self.knn_fill_depth(depth_tensor, missing_val=0)
-                print("Zeros after fill:", torch.sum(depth_tensor == 0).item())
         
             # Clamp based on 98% of the actual scene
             vmin = np.percentile(depth_tensor.cpu().numpy(), 1)   
@@ -188,7 +249,7 @@ class Preprocessing:
             normalized_image_tensor = (depth_tensor - vmin) / (vmax - vmin)
             print(f"Min of normalized depth tensor: {torch.min(normalized_image_tensor)}")
             print(f"Max of normalized depth tensor: {torch.max(normalized_image_tensor)}")
-                    
+                   
         else:
             normalized_image_tensor = image_tensor/255.0
 
@@ -228,8 +289,6 @@ class Preprocessing:
 
         return grayscale, vmin, vmax
 
-    def full_pipeline(self,):
-        return
     
 if __name__ == "__main__":
     print(__name__)
@@ -238,12 +297,13 @@ if __name__ == "__main__":
     preproc = Preprocessing()
 
     # Replace zeros (0) in depth images. Zero means sensor failed to read properly the depth at a given point in the image.
-    filled_depth_dir = "../DepthImagesNoZeros"
-    if not os.path.exists(filled_depth_dir):
-        os.makedirs(filled_depth_dir)
-        depth_images = os.listdir("../DepthImages/")
-        for img in depth_images:
-            no_zeros_img = preproc.knn_fill_depth(img)
+    depth_dir = "../DepthImages"
+    new_dir = "../No_Noise_Depth"
+
+    preproc.remove_noise_depth(depth_dir, new_dir)
+    
+            
+            
             
 
     
