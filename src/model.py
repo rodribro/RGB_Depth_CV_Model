@@ -17,6 +17,8 @@ class RGBProcessingBlock(nn.Module):
         x = self.relu(self.conv1(x))
         x = self.relu(self.conv2(x))
         return x
+    
+    
 
 class RGBBranch(nn.Module):
     def __init__(self):
@@ -168,7 +170,7 @@ class SecondStageRegressor(nn.Module):
         self.dropout2 = nn.Dropout(0.5)
         self.fc3 = nn.Linear(2048,1)
 
-    def forward(self):
+    def forward(self, x):
 
         x = self.fc1(x)
         x = self.dropout1(x)
@@ -193,9 +195,10 @@ class SecondStage(nn.Module):
     
 
 
-class TwoStageModel(nn.Model):
+class TwoStageModel(nn.Module):
+
     def __init__(self):
-        super(TwoStageModel).__init__()
+        super(TwoStageModel, self).__init__()
         self.first_stage = FirstStage()
         self.second_stage = SecondStage()
 
